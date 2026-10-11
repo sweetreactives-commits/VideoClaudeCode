@@ -38,6 +38,10 @@
 короткие ручки-варежки и ножки. Характер: старательный и гордый стажёр, нос живёт своей жизнью.
 Эмоции — `src/characters/expressions.ts` (proud, bliss, worry, pre1–3, sneeze, dazed, surprised, holding).
 
+## Методология
+Обобщённые уроки производства (рабочий цикл, чек-лист ревью кадра, персонажи, камера, эффекты,
+рендер без GPU и его грабли) — `docs/03-lessons.md`. Прочитать перед началом нового этапа или нового фильма.
+
 ## Технические правила
 - Стек: Vite + TypeScript + three.js + postprocessing (+ n8ao). Структура: `src/characters`, `src/sets`,
   `src/shots`, `src/timeline`, `src/render`, скрипты захвата — `scripts/`.
