@@ -58,8 +58,14 @@
 - `npm run build` — сборка в `dist/` (нужна перед захватом).
 - `node scripts/stills.mjs 2.5s 4.8s --w 1280 --name s02` — стиллы в `review/` (jpg).
 - `node scripts/stills.mjs --sheet` — лист персонажа.
-- `node scripts/render.mjs --w 960 --q draft` — черновой рендер; `node scripts/render.mjs` — финал 1080p.
+- `node scripts/render.mjs --w 640 --q draft` — черновой рендер; `node scripts/render.mjs` — финал 1080p.
   Рендер возобновляемый (пропускает готовые кадры в `frames/`), идёт по кадрам раскадровки, `--workers N`.
+- `node scripts/review.mjs` — стиллы для `review/` из готовых финальных кадров.
+- `node scripts/contact.mjs out/<видео>.mp4 review/contact.jpg` — контактный лист (кадр каждые 0,5 с).
+
+## Производительность (SwiftShader, 4 ядра)
+Черновик 640×360 — ~5 с/кадр на воркер; финал 1920×1080 — ~22–28 с/кадр на воркер (2 воркера ≈ 1 час на 10 с).
+Первый кадр в каждом браузере дольше на ~10 с (компиляция шейдеров).
 
 ## Окружение
 GPU нет: WebGL — SwiftShader в headless Chromium (`/opt/pw-browsers`), медленно. Одна команда ограничена

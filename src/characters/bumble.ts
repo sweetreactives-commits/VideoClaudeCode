@@ -136,7 +136,7 @@ export class Bumble {
     bodyMesh.receiveShadow = true;
     bodyMesh.name = 'bums-body';
     this.body.add(bodyMesh);
-    const shellCount = opts.shells ?? 5;
+    const shellCount = opts.shells ?? 8;
     for (let i = 0; i < shellCount; i++) {
       const s = new THREE.Mesh(bodyGeo, createFuzzShellMaterial(i, shellCount, fur.uniforms));
       s.castShadow = false;

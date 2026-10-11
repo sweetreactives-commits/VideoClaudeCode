@@ -145,7 +145,7 @@ export class World {
     this.skyMat = sky.material;
     scene.add(sky.mesh);
 
-    this.bumble = new Bumble(poseAt, { shells: opts.quality === 'final' ? 5 : 3 });
+    this.bumble = new Bumble(poseAt, { shells: opts.quality === 'final' ? 8 : 4 });
     scene.add(this.bumble.root);
 
     if (opts.characterOnly) {

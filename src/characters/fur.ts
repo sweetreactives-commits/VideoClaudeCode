@@ -104,9 +104,11 @@ export function createFurMaterial(): { material: THREE.MeshPhysicalMaterial; uni
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
   {
-    // Процедурный «бамп» ворса: высота — вытянутый шум, нормаль возмущается через производные.
-    float hgt = vnoise3(vObj * 26.0) * 0.6 + vnoise3(vObj * 64.0) * 0.4;
-    vec2 dH = vec2(dFdx(hgt), dFdy(hgt)) * 0.0045;
+    // Процедурный «бамп» ворса: волоски, «зачёсанные» сверху вниз (шум вытянут вдоль Y),
+    // нормаль возмущается через экранные производные.
+    vec3 dn = normalize(vObj);
+    float hgt = vnoise3(dn * vec3(150.0, 26.0, 150.0)) * 0.65 + vnoise3(dn * vec3(260.0, 50.0, 260.0)) * 0.35;
+    vec2 dH = vec2(dFdx(hgt), dFdy(hgt)) * 0.0028;
     vec3 vSigmaX = dFdx(-vViewPosition);
     vec3 vSigmaY = dFdy(-vViewPosition);
     vec3 R1 = cross(vSigmaY, normal);
@@ -136,7 +138,7 @@ export function createFuzzShellMaterial(layer: number, layers: number, furUnifor
         '#include <begin_vertex>',
         `#include <begin_vertex>
   vObj = position;
-  transformed = bumsDeform(position, normal) + normal * uLayer * 0.09;`,
+  transformed = bumsDeform(position, normal) + normal * uLayer * 0.075;`,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${NOISE_GLSL}\n${STRIPES_GLSL}\nvarying vec3 vObj;\nuniform float uLayer;`)
@@ -145,20 +147,27 @@ export function createFuzzShellMaterial(layer: number, layers: number, furUnifor
         `#include <color_fragment>
   {
     vec3 d = normalize(vObj);
-    // Волоски: ячейки шума, их «толщина» убывает к кончику; мягкий край вместо жёсткого отсечения.
-    float strand = vnoise3(d * 58.0) * 0.7 + vnoise3(d * 131.0) * 0.3;
-    float th = 0.36 + uLayer * 0.36;
-    float a = smoothstep(th, th + 0.12, strand);
+    // Волоски: тонкие ячейки шума; от слоя к слою порог растёт — волосок сужается к кончику.
+    float strand = vnoise3(d * 165.0) * 0.75 + vnoise3(d * 70.0) * 0.25;
+    float th = 0.42 + uLayer * 0.3;
+    float a = smoothstep(th, th + 0.07, strand);
     // Только у силуэта: обращённые к камере участки прозрачны.
     vec3 Vv = normalize(vViewPosition);
     float facing = abs(dot(normalize(vNormal), Vv));
-    float rim = 1.0 - smoothstep(0.18, 0.55, facing);
-    a *= rim * (1.0 - uLayer * 0.35);
-    if (a < 0.04) discard;
+    float rim = 1.0 - smoothstep(0.22, 0.6, facing);
+    a *= rim * (1.0 - uLayer * 0.25);
+    if (a < 0.05) discard;
     vec3 col = bumsColor(vObj);
-    diffuseColor.rgb *= col * (0.8 + 0.3 * uLayer);
+    // Кончики светлее — пух «светится» по контуру.
+    diffuseColor.rgb *= col * (0.95 + 0.45 * uLayer);
     diffuseColor.a = a;
   }`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+  // Волоски освещаются почти «в лоб», иначе контур на скользящих углах темнеет и выглядит как стекло.
+  normal = normalize(mix(normal, vec3(0.0, 0.0, 1.0), 0.6));`,
       );
   };
   return material;
