@@ -1,0 +1,27 @@
+{
+  "name": "apchkhi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "«Апчхи!» — короткий процедурный 3D-мультфильм на three.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "render": "node scripts/render.mjs",
+    "stills": "node scripts/stills.mjs"
+  },
+  "dependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "n8ao": "^2.0.1",
+    "postprocessing": "^6.39.5",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "puppeteer-core": "^25.13.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
