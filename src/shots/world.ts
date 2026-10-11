@@ -78,7 +78,7 @@ function scatterFlowers(corridors: { a: THREE.Vector3; b: THREE.Vector3 }[]): Fl
       color, center,
       leanDir: r() * Math.PI * 2,
       leanAmt: r() * 0.16,
-      openAt: r() < 0.5 ? -Infinity : Infinity,
+      openAt: r() < 0.45 ? -Infinity : Infinity,
       seed: Math.floor(r() * 100000),
     });
   }
@@ -95,7 +95,7 @@ function scatterFlowers(corridors: { a: THREE.Vector3; b: THREE.Vector3 }[]): Fl
         bestT = sm.t;
       }
     }
-    if (best < 8.5) s.openAt = bestT + 0.22 + best * 0.07 + r() * 0.12;
+    if (best < 12) s.openAt = bestT + 0.2 + best * 0.06 + r() * 0.12;
     // Облако чиха над цветком-героем: соседние бутоны раскрываются первыми.
     const dh = Math.hypot(s.x - H.x, s.z - H.z);
     if (dh < 9) s.openAt = Math.min(s.openAt, T.sneeze + 0.35 + dh * 0.09 + r() * 0.1);
@@ -198,6 +198,7 @@ export class World {
       noseAt: (t) => noseLocal.clone().applyMatrix4(this.bumble.bodyWorldMatrix(poseAt(t), m)),
       heroCenterAt: (t) => this.hero!.centerAt(t),
       bloomingFlowers: specs.filter((s) => isFinite(s.openAt)),
+      petalMaterial: petalMat,
     });
     scene.add(this.effects.group);
     void BACK_DIR;

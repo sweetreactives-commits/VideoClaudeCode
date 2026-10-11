@@ -221,6 +221,8 @@ export class FlowerField {
   private petals: Record<FlowerKind, THREE.InstancedMesh>;
   readonly stemMaterial: THREE.MeshStandardMaterial;
   private petalOffsets: Map<FlowerSpec, number> = new Map();
+  /** Исходные цвета лепестков (бутон зеленоватый, раскрытый — свой цвет). */
+  private petalBase: Record<FlowerKind, Float32Array> = { cosmos: new Float32Array(0), daisy: new Float32Array(0), buttercup: new Float32Array(0) };
 
   constructor(readonly specs: FlowerSpec[], petalMaterial: THREE.Material) {
     const n = specs.length;
@@ -279,6 +281,11 @@ export class FlowerField {
         this.petals[s.kind].setColorAt(off + k, col);
       }
     });
+
+    for (const kind of Object.keys(this.petals) as FlowerKind[]) {
+      const ic = this.petals[kind].instanceColor;
+      if (ic) this.petalBase[kind] = (ic.array as Float32Array).slice();
+    }
 
     for (const m of [this.stems, this.leaves, this.centers, this.sepals, ...Object.values(this.petals)]) {
       m.frustumCulled = false;
@@ -354,7 +361,15 @@ export class FlowerField {
       const wid = K.petalWidth * len * (0.7 + 0.3 * smoothstep(0, 1, b));
       const off = this.petalOffsets.get(s)!;
       const r = rng(s.seed + 11);
+      // Бутон зеленоватый: при раскрытии вспыхивает цветом — так волна цветения читается издалека.
+      const colorK = smoothstep(0.05, 0.8, b);
+      const ic = this.petals[s.kind].instanceColor!.array as Float32Array;
+      const base = this.petalBase[s.kind];
       for (let k = 0; k < K.petals; k++) {
+        const ci = (off + k) * 3;
+        ic[ci] = base[ci] * (0.45 + 0.55 * colorK) + 0.18 * (1 - colorK);
+        ic[ci + 1] = base[ci + 1] * (0.45 + 0.55 * colorK) + 0.32 * (1 - colorK);
+        ic[ci + 2] = base[ci + 2] * (0.45 + 0.55 * colorK) + 0.08 * (1 - colorK);
         const phi = (k / K.petals) * Math.PI * 2 + r() * 0.12 + s.seed * 0.7;
         const jl = lift + (r() - 0.5) * 0.12;
         _m.makeRotationY(phi);
@@ -367,7 +382,10 @@ export class FlowerField {
     });
     this.centers.instanceMatrix.needsUpdate = true;
     this.sepals.instanceMatrix.needsUpdate = true;
-    for (const p of Object.values(this.petals)) p.instanceMatrix.needsUpdate = true;
+    for (const p of Object.values(this.petals)) {
+      p.instanceMatrix.needsUpdate = true;
+      if (p.instanceColor) p.instanceColor.needsUpdate = true;
+    }
     this.stemMaterial.userData.uniforms.uTime.value = t;
   }
 }

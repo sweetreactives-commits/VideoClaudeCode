@@ -90,7 +90,7 @@ export function cameraAt(t: number): CameraState {
       const mid = B1.clone().add(new THREE.Vector3(0, -0.45, 0)).lerp(H, 0.42);
       // Почти профиль (чуть к мордочке): цветок справа не перекрывает Бумса, выстрел чиха идёт поперёк кадра.
       const dir = SIDE.clone().addScaledVector(FACE_DIR, 0.3).normalize();
-      const back = track(t, [[6.6, 9.4], [T.sneeze, 9.4], [7.2, 10.6, outQuad], [8.0, 11.0]]);
+      const back = track(t, [[6.6, 9.4], [T.sneeze, 9.4], [7.2, 10.6, outQuad], [7.5, 10.8]]);
       pos.copy(mid).addScaledVector(dir, back).add(new THREE.Vector3(0, 3.4, 0));
       target.copy(mid).add(new THREE.Vector3(-0.3, 0.1, 0));
       shake(t, T.sneeze, 0.3, 5.5, pos);
@@ -108,17 +108,17 @@ export function cameraAt(t: number): CameraState {
       const land = landingSeat(T.land);
       // Камера смотрит вдоль −SIDE, значит «вправо по экрану» = FACE_DIR.
       const right = FACE_DIR;
-      const k = smoothstep(8.0, 9.6, t);
+      const k = smoothstep(7.7, 9.6, t);
       const fly = bumsAnchor(Math.min(t, T.land));
       const lead = fly.clone().addScaledVector(right, -3.2).add(new THREE.Vector3(0, -1.2, 0));
       const settle = land.clone().addScaledVector(right, 3.6).add(new THREE.Vector3(0, 0.4, 0));
       target.copy(lead).lerp(settle, k);
       // Мягкий «догоняющий» сдвиг: цель чуть отстаёт от героя.
       target.lerp(flightPos(Math.max(T.launch, t - 0.25)).addScaledVector(right, -3.2), 0.3 * (1 - k));
-      const dist = track(t, [[8.0, 17], [10.0, 12.5, inOutSine]]);
-      pos.copy(target).addScaledVector(SIDE, dist).add(new THREE.Vector3(0, dist * 0.2, 0));
+      const dist = track(t, [[7.5, 19], [10.0, 12.5, inOutSine]]);
+      pos.copy(target).addScaledVector(SIDE, dist).add(new THREE.Vector3(0, dist * 0.3, 0));
       shake(t, T.land, 0.06, 6, pos);
-      focal = track(t, [[8.0, 30], [10.0, 36]]);
+      focal = track(t, [[7.5, 30], [10.0, 36]]);
       focusPoint = bumsAnchor(t);
       focusRange = 9;
       bokeh = 2.2;

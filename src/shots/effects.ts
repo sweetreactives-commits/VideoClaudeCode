@@ -4,7 +4,7 @@ import { hash1, noise1 } from '../timeline/random';
 import { smoothstep, clamp01, inQuad, outCubic } from '../timeline/ease';
 import { PALETTE } from '../sets/palette';
 import { WIND_DIR } from '../sets/wind';
-import { FlowerField, type FlowerSpec } from '../sets/flowers';
+import { FlowerField, petalGeometry, type FlowerSpec } from '../sets/flowers';
 import { T, FACE_DIR, H } from './layout';
 import { flightPos, landingSeat } from './action';
 
@@ -45,6 +45,51 @@ export interface EffectsDeps {
   /** Центр головки цветка-героя в момент t. */
   heroCenterAt: (t: number) => THREE.Vector3;
   bloomingFlowers: FlowerSpec[];
+  /** Материал лепестков (для летящих по ветру лепестков). */
+  petalMaterial: THREE.Material;
+}
+
+/** Лепестки и листочки, кувыркающиеся по ветру вокруг точки интереса камеры. */
+class DriftingPetals {
+  readonly mesh: THREE.InstancedMesh;
+  private readonly count = 70;
+  constructor(material: THREE.Material) {
+    this.mesh = new THREE.InstancedMesh(petalGeometry(3, 4, 0.3, 0), material, this.count);
+    const colors = [PALETTE.petalPink, PALETTE.petalWhite, PALETTE.petalMagenta, PALETTE.petalWhite, PALETTE.leaf, PALETTE.petalButter];
+    const c = new THREE.Color();
+    for (let i = 0; i < this.count; i++) {
+      c.copy(colors[Math.floor(hash1(i + 7000) * colors.length)]).offsetHSL(0, 0, (hash1(i + 7001) - 0.5) * 0.08);
+      this.mesh.setColorAt(i, c);
+    }
+    this.mesh.frustumCulled = false;
+    this.mesh.castShadow = false;
+    this.mesh.receiveShadow = true;
+  }
+
+  update(t: number, center: THREE.Vector3) {
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const p = new THREE.Vector3();
+    const s = new THREE.Vector3();
+    const box = 22;
+    for (let i = 0; i < this.count; i++) {
+      const h = (k: number) => hash1(i * 13 + 7100 + k);
+      let x = h(1) * box * 2 + WIND_DIR.x * t * (1.6 + h(4)) + noise1(t * 0.5 + i, 61) * 1.5;
+      let z = h(3) * box * 2 + WIND_DIR.z * t * (1.6 + h(4)) + noise1(t * 0.45 + i, 62) * 1.5;
+      x = ((x - center.x + box) % (box * 2) + box * 2) % (box * 2) + center.x - box;
+      z = ((z - center.z + box) % (box * 2) + box * 2) % (box * 2) + center.z - box;
+      // Медленно опускаются, подхваченные порывами.
+      const fall = ((h(2) * 14 - t * (0.35 + h(5) * 0.4)) % 14 + 14) % 14;
+      p.set(x, center.y - 5 + fall + Math.sin(t * (1.2 + h(6)) + i) * 0.5, z);
+      e.set(t * (1.5 + h(7) * 2) + i, t * (0.8 + h(8)) + i * 2, Math.sin(t * 2.3 + i) * 0.8);
+      q.setFromEuler(e);
+      const sz = 0.45 + h(9) * 0.5;
+      m.compose(p, q, s.set(sz * 0.55, sz, sz));
+      this.mesh.setMatrixAt(i, m);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
 }
 
 export class FilmEffects {
@@ -52,9 +97,11 @@ export class FilmEffects {
   readonly pollen = new ParticleLayer(4200, { maxPx: 110 });
   readonly sparkles = new ParticleLayer(900, { additive: true, maxPx: 30 });
   readonly group = new THREE.Group();
+  private drifting: DriftingPetals;
 
   constructor(private deps: EffectsDeps) {
-    this.group.add(this.motes.points, this.pollen.points, this.sparkles.points);
+    this.drifting = new DriftingPetals(deps.petalMaterial);
+    this.group.add(this.motes.points, this.pollen.points, this.sparkles.points, this.drifting.mesh);
   }
 
   setView(camera: THREE.PerspectiveCamera, heightPx: number, fog: THREE.Fog | null) {
@@ -84,6 +131,7 @@ export class FilmEffects {
       this.motes.push(x, y, z, size, 0.4 * tw, DUST, 1.7);
     }
     this.motes.end();
+    this.drifting.update(t, camTarget);
 
     this.pollen.begin();
     this.sparkles.begin();
@@ -121,7 +169,7 @@ export class FilmEffects {
       for (let i = 0; i < N; i++) {
         const birth = T.sneeze + hash1(i + 1000) * 0.07;
         const tau = t - birth;
-        const big = i % 5 === 0;
+        const big = i % 8 === 0;
         const life = big ? 2.2 + hash1(i + 1001) * 1.5 : 1.4 + hash1(i + 1002) * 2.4;
         const al = lifeAlpha(tau, life, 0.03);
         if (al <= 0) continue;
@@ -138,7 +186,7 @@ export class FilmEffects {
         const grow = 1 + Math.min(tau, 1.5) * 1.2;
         const size = big ? (0.35 + hash1(i + 1006) * 0.6) * grow : (0.045 + hash1(i + 1007) * 0.06) * (1 + tau * 0.3);
         _c.copy(POLLEN).lerp(DUST, hash1(i + 1008) * 0.35);
-        this.pollen.push(p.x, p.y, p.z, size, al * (big ? 0.13 : 0.95), _c, big ? 1.05 : 1.6);
+        this.pollen.push(p.x, p.y, p.z, size, al * (big ? 0.1 : 0.95), _c, big ? 1.05 : 1.6);
       }
 
       // Ответный «выдох» цветка: пыльца срывается с серединки.
@@ -159,13 +207,13 @@ export class FilmEffects {
         p.z += noise1(tau * 1.1 + i * 0.7, 33) * tb;
         const big = i % 4 === 0;
         const size = big ? 0.4 + tau * 0.45 : 0.03 + hash1(i + 2004) * 0.05;
-        this.pollen.push(p.x, p.y, p.z, size, al * (big ? 0.1 : 0.85), POLLEN, 1.2);
+        this.pollen.push(p.x, p.y, p.z, size, al * (big ? 0.07 : 0.85), POLLEN, 1.2);
       }
     }
 
     // ── Шлейф пыльцы за летящим Бумсом ──
     if (t > T.launch) {
-      const N = 1500;
+      const N = 2100;
       for (let i = 0; i < N; i++) {
         const q = i / N;
         const birth = T.launch + 0.02 + (T.land - T.launch) * Math.pow(q, 1.25);
@@ -181,7 +229,7 @@ export class FilmEffects {
         p.y += noise1(tau + i * 0.31, 41) * 0.3 * tau;
         const density = 1 - q * 0.45;
         const big = i % 5 === 0;
-        const size = big ? 0.32 + tau * 0.5 : 0.035 + hash1(i + 3003) * 0.06;
+        const size = big ? 0.32 + tau * 0.5 : 0.05 + hash1(i + 3003) * 0.07;
         this.pollen.push(p.x, p.y, p.z, size, al * density * (big ? 0.2 : 0.9), POLLEN, 1.25);
       }
     }
@@ -221,7 +269,7 @@ export class FilmEffects {
         r.y = Math.abs(r.y) + 0.4;
         v.copy(r).normalize().multiplyScalar((1.5 + hash1(i + 5003) * 2) * s.scale);
         ballistic(p, tip, v, 2.5, tau, -0.2, 0.4);
-        this.sparkles.push(p.x, p.y, p.z, 0.07 * s.scale, al * outCubic(1 - clamp01(tau / life)), POLLEN, 3.5);
+        this.sparkles.push(p.x, p.y, p.z, 0.1 * s.scale, al * outCubic(1 - clamp01(tau / life)), POLLEN, 4.0);
       }
     });
 
